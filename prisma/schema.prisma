@@ -1,0 +1,210 @@
+// Schema Fase 2 (persistenza). In Fase 1 l'app e' stateless: questo
+// schema e' predisposto ora cosi' che il passaggio a Fase 2 non richieda
+// di ridisegnare le entita' del dominio (scan, score, issue, ecc.),
+// solo di collegare un DATABASE_URL reale e attivare `prisma migrate`.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum PlanType {
+  FREE
+  PRO
+}
+
+enum ScanStatus {
+  REQUESTED
+  CRAWLING
+  ANALYZING
+  AI_PROCESSING
+  SCORING
+  COMPLETED
+  FAILED
+}
+
+enum IssueSeverity {
+  HIGH
+  MEDIUM
+  LOW
+}
+
+enum BusinessType {
+  BNB
+  HOTEL
+  RESTAURANT
+  SHOP
+  PROFESSIONAL
+  OTHER
+}
+
+model User {
+  id            String         @id @default(cuid())
+  email         String         @unique
+  passwordHash  String
+  emailVerified DateTime?
+  isAdmin       Boolean        @default(false)
+  plan          PlanType       @default(FREE)
+
+  // Token per reset password / verifica email: salviamo solo l'hash,
+  // mai il token in chiaro, cosi' un accesso al database non basta a
+  // impersonare un utente. Vedi src/lib/auth/tokens.ts.
+  passwordResetTokenHash    String?
+  passwordResetExpiresAt    DateTime?
+  emailVerifyTokenHash      String?
+  emailVerifyExpiresAt      DateTime?
+
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  organizations Organization[]
+  sites         Site[]
+  notifications Notification[]
+  subscription  Subscription?
+}
+
+// Un utente puo' avere piu' organizzazioni in futuro (es. agenzia che
+// gestisce siti per conto di piu' clienti). In Fase 1/2 un utente ne ha
+// tipicamente una sola, creata implicitamente alla registrazione.
+model Organization {
+  id        String   @id @default(cuid())
+  name      String
+  ownerId   String
+  owner     User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  sites     Site[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Site {
+  id             String        @id @default(cuid())
+  url            String
+  businessType   BusinessType
+  goal           String
+  ownerId        String
+  owner          User          @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  scans          Scan[]
+
+  // Monitoraggio periodico (piano Pro). nextScanAt e' letto dal job di
+  // cron: vedi src/app/api/cron/rescan/route.ts.
+  monitoringEnabled Boolean  @default(false)
+  scanFrequencyDays Int      @default(7)
+  nextScanAt        DateTime?
+
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  @@index([ownerId])
+  @@index([monitoringEnabled, nextScanAt])
+}
+
+model Scan {
+  id            String        @id @default(cuid())
+  siteId        String
+  site          Site          @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  status        ScanStatus    @default(REQUESTED)
+  overallScore  Int?
+  pagesCrawled  Int           @default(0)
+  businessImpactSummary String?
+  strengths     String[]      @default([])
+  unverifiable  String[]      @default([])
+  errorCode     String?
+  errorMessage  String?
+  retryCount    Int           @default(0)
+  startedAt     DateTime      @default(now())
+  completedAt   DateTime?
+  scores        ScanScore[]
+  issues        ScanIssue[]
+  recommendations Recommendation[]
+  reports       Report[]
+
+  @@index([siteId, startedAt])
+}
+
+// Un punteggio per categoria (SEO, Performance, Mobile, ...) per scan.
+model ScanScore {
+  id       String @id @default(cuid())
+  scanId   String
+  scan     Scan   @relation(fields: [scanId], references: [id], onDelete: Cascade)
+  category String
+  score    Int
+  weight   Float
+
+  @@index([scanId])
+}
+
+model ScanIssue {
+  id             String        @id @default(cuid())
+  scanId         String
+  scan           Scan          @relation(fields: [scanId], references: [id], onDelete: Cascade)
+  title          String
+  description    String
+  whyItMatters   String
+  recommendation String
+  evidence       String?
+  category       String
+  severity       IssueSeverity
+  createdAt      DateTime      @default(now())
+
+  @@index([scanId])
+}
+
+model Recommendation {
+  id        String   @id @default(cuid())
+  scanId    String
+  scan      Scan     @relation(fields: [scanId], references: [id], onDelete: Cascade)
+  title     String
+  detail    String
+  priority  Int
+  createdAt DateTime @default(now())
+
+  @@index([scanId])
+}
+
+model Report {
+  id        String   @id @default(cuid())
+  scanId    String
+  scan      Scan     @relation(fields: [scanId], references: [id], onDelete: Cascade)
+  pdfUrl    String?
+  publicSlug String? @unique
+  createdAt DateTime @default(now())
+}
+
+model Subscription {
+  id                   String   @id @default(cuid())
+  userId               String   @unique
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  stripeCustomerId     String?
+  stripeSubscriptionId String?
+  plan                 PlanType @default(FREE)
+  currentPeriodEnd     DateTime?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+}
+
+// Limiti per piano, letti a runtime — mai hardcoded nella logica applicativa.
+model UsageLimit {
+  id            String   @id @default(cuid())
+  plan          PlanType @unique
+  maxSites      Int
+  maxScansMonth Int
+  maxPagesScan  Int
+  updatedAt     DateTime @updatedAt
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String
+  message   String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
