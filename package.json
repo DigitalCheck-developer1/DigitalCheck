@@ -2,7 +2,7 @@
   "name": "digitalcheck",
   "version": "0.1.0",
   "private": true,
-  "description": "DigitalCheck — analisi digitale per attività locali (B&B, ristoranti, professionisti). MVP Fase 1.",
+  "description": "DigitalCheck \u2014 analisi digitale per attivit\u00e0 locali (B&B, ristoranti, professionisti). MVP Fase 1.",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -42,5 +42,11 @@
   },
   "engines": {
     "node": ">=18.18.0"
+  },
+  "allowScripts": {
+    "@prisma/client@5.22.0": true,
+    "prisma@5.22.0": true,
+    "@prisma/engines@5.22.0": true,
+    "esbuild@0.28.2": true
   }
 }
