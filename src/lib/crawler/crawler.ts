@@ -158,7 +158,7 @@ export async function crawlSite(requestedUrl: string, options: CrawlOptions): Pr
 
   // Pagine interne aggiuntive, estratte dai link della homepage,
   // limitate a options.maxPages (piano Free/Pro).
-  const internalLinks = extractInternalLinks(result.pages[0].html, origin).slice(
+  const internalLinks = extractInternalLinks(result.pages[0]?.html ?? "", origin).slice(
     0,
     Math.max(0, options.maxPages - 1)
   );
@@ -201,8 +201,10 @@ function extractInternalLinks(html: string, origin: string): string[] {
   const found = new Set<string>();
   let match: RegExpExecArray | null;
   while ((match = hrefPattern.exec(html)) !== null) {
+    const href = match[1];
+    if (!href) continue;
     try {
-      const resolved = new URL(match[1], origin);
+      const resolved = new URL(href, origin);
       if (resolved.origin === origin) {
         found.add(resolved.toString());
       }

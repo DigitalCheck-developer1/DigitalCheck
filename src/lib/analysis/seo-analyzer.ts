@@ -10,6 +10,9 @@ import type { CrawlResult, SeoFacts } from "@/types";
  */
 export function analyzeSeoFacts(crawl: CrawlResult): SeoFacts {
   const home = crawl.pages[0];
+  if (!home) {
+    throw new Error("Impossibile analizzare: nessuna pagina disponibile nel crawl.");
+  }
   const $ = cheerio.load(home.html);
   const origin = new URL(home.finalUrl).origin;
 
