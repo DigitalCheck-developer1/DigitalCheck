@@ -1,11 +1,7 @@
-import type { Config } from "tailwindcss";
+import pathlib
 
-// Token di design DigitalCheck.
-// Palette pensata per comunicare affidabilita' e precisione tecnica,
-// non un "AI toy": base neutra calda, inchiostro per il testo,
-// un solo accento (teal profondo) e colori di severita' usati
-// esclusivamente per gli indicatori di stato, mai come decorazione.
-const config: Config = {
+new_config = '''/** @type {import('tailwindcss').Config} */
+module.exports = {
   content: ["./src/**/*.{ts,tsx}"],
   theme: {
     extend: {
@@ -43,5 +39,13 @@ const config: Config = {
   },
   plugins: [],
 };
+'''
 
-export default config;
+pathlib.Path("tailwind.config.js").write_text(new_config)
+
+old_ts = pathlib.Path("tailwind.config.ts")
+if old_ts.exists():
+    old_ts.unlink()
+    print("Rimosso tailwind.config.ts")
+
+print("OK: creato tailwind.config.js")
