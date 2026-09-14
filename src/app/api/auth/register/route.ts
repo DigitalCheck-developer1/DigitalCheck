@@ -9,7 +9,7 @@ import { sendMail } from "@/lib/mail/mailer";
 const schema = z.object({
   email: z.string().trim().toLowerCase().email("Email non valida"),
   password: z.string().min(10, "La password deve avere almeno 10 caratteri"),
-  organizationName: z.string().trim().min(1).max(120).optional(),
+  organizationName: z.string().trim().max(120).optional(),
 });
 
 export async function POST(request: NextRequest) {
