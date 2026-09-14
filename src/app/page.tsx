@@ -250,14 +250,18 @@ export default function HomePage() {
             </div>
             <div className="rounded-lg border border-accent bg-accent-soft/40 p-6">
               <h3 className="font-display text-xl">Pro</h3>
-              <p className="mt-1 text-sm text-ink-soft">Per monitorare e migliorare nel tempo</p>
+              <p className="mt-1 text-sm text-ink-soft">Per non limitarti a sapere cosa non va</p>
               <ul className="mt-4 space-y-2 text-sm text-ink-soft">
                 <li>• Analisi complete e report dettagliato</li>
-                <li>• Monitoraggio periodico e storico punteggi</li>
-                <li>• Analisi AI avanzata</li>
-                <li>• Report PDF, scansioni programmate</li>
+                <li>• Monitoraggio automatico periodico</li>
+                <li>• Storico e confronto dei punteggi nel tempo</li>
+                <li>• Analisi AI avanzata dei contenuti</li>
+                <li>• Assistente AI: testi e correzioni pronti da incollare</li>
+                <li>• Richiedi il nostro intervento diretto per implementarle</li>
+                <li>• Report PDF scaricabili e condivisibili</li>
+                <li>• Fino a 10 siti monitorati, 100 scansioni al mese</li>
               </ul>
-              <p className="mt-4 text-sm text-ink-soft">A partire da circa 4,99–7,99 €/mese</p>
+              <p className="mt-4 text-sm text-ink-soft">9,99 €/mese</p>
             </div>
           </div>
         </div>
