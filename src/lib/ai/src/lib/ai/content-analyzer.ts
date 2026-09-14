@@ -7,12 +7,6 @@ export interface ContentAnalysisResult {
   unavailableReason?: string;
 }
 
-/**
- * Chiama il provider AI configurato via env var. Se AI_API_KEY non e'
- * impostata, o la risposta non rispetta lo schema atteso, ritorna
- * analysis: null con una motivazione esplicita — il report deve
- * dichiararlo, mai inventare un'interpretazione.
- */
 export async function runContentAnalysis(
   facts: SeoFacts,
   crawl: CrawlResult,
@@ -65,47 +59,43 @@ export async function runContentAnalysis(
   return { analysis };
 }
 
-/**
- * Adapter verso il provider AI. Implementato per l'endpoint
- * /v1/messages di Anthropic; per usare un altro provider, sostituisci
- * solo questa funzione (l'interfaccia sopra resta invariata).
- */
 async function callAiProvider(system: string, user: string, apiKey: string): Promise<string> {
-  const model = process.env.AI_MODEL || "claude-sonnet-4-6";
+  const model = process.env.AI_MODEL || "gemini-3.6-flash";
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 20_000);
 
   try {
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      signal: controller.signal,
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
-      },
-      body: JSON.stringify({
-        model,
-        max_tokens: 2000,
-        system,
-        messages: [{ role: "user", content: user }],
-      }),
-    });
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+      {
+        method: "POST",
+        signal: controller.signal,
+        headers: {
+          "Content-Type": "application/json",
+          "x-goog-api-key": apiKey,
+        },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: user }] }],
+          systemInstruction: { parts: [{ text: system }] },
+        }),
+      }
+    );
 
     if (!response.ok) {
-      throw new Error(`Il provider AI ha risposto con status ${response.status}`);
+      const errorBody = await response.text().catch(() => "");
+      throw new Error(`Il provider AI ha risposto con status ${response.status}: ${errorBody.slice(0, 300)}`);
     }
 
     const data = (await response.json()) as {
-      content?: { type: string; text?: string }[];
+      candidates?: { content?: { parts?: { text?: string }[] } }[];
     };
 
-    const textBlock = data.content?.find((block) => block.type === "text");
-    if (!textBlock?.text) {
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!text) {
       throw new Error("Risposta del provider AI priva di contenuto testuale");
     }
-    return textBlock.text;
+    return text;
   } finally {
     clearTimeout(timer);
   }

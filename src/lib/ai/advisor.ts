@@ -44,34 +44,41 @@ export async function askAdvisor(
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 25_000);
+  const model = process.env.AI_MODEL || "gemini-3.6-flash";
 
   try {
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      signal: controller.signal,
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
-      },
-      body: JSON.stringify({
-        model: process.env.AI_MODEL || "claude-sonnet-4-6",
-        max_tokens: 1000,
-        system,
-        messages: [{ role: "user", content: user }],
-      }),
-    });
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+      {
+        method: "POST",
+        signal: controller.signal,
+        headers: {
+          "Content-Type": "application/json",
+          "x-goog-api-key": apiKey,
+        },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: user }] }],
+          systemInstruction: { parts: [{ text: system }] },
+        }),
+      }
+    );
 
     if (!response.ok) {
-      return { answer: null, unavailableReason: `Il provider AI ha risposto con status ${response.status}` };
+      const errorBody = await response.text().catch(() => "");
+      return {
+        answer: null,
+        unavailableReason: `Il provider AI ha risposto con status ${response.status}: ${errorBody.slice(0, 300)}`,
+      };
     }
 
-    const data = (await response.json()) as { content?: { type: string; text?: string }[] };
-    const textBlock = data.content?.find((b) => b.type === "text");
-    if (!textBlock?.text) {
+    const data = (await response.json()) as {
+      candidates?: { content?: { parts?: { text?: string }[] } }[];
+    };
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!text) {
       return { answer: null, unavailableReason: "Risposta del provider AI priva di contenuto testuale" };
     }
-    return { answer: textBlock.text };
+    return { answer: text };
   } catch (err) {
     return {
       answer: null,
