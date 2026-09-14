@@ -5,6 +5,7 @@ import { hashPassword, isPasswordStrongEnough } from "@/lib/auth/password";
 import { createSessionToken, sessionCookieOptions, SESSION_COOKIE_NAME } from "@/lib/auth/session";
 import { generateToken, tokenExpiry } from "@/lib/auth/tokens";
 import { sendMail } from "@/lib/mail/mailer";
+import { grantOwnerPrivilegesIfNeeded } from "@/lib/auth/owner";
 
 const schema = z.object({
   email: z.string().trim().toLowerCase().email("Email non valida"),
@@ -58,10 +59,16 @@ export async function POST(request: NextRequest) {
     text: `Conferma il tuo indirizzo email visitando questo link (valido 24 ore): ${verifyLink}`,
   });
 
-  const sessionToken = await createSessionToken({ userId: user.id, email: user.email, isAdmin: user.isAdmin });
+  const currentUser = await grantOwnerPrivilegesIfNeeded(user);
+
+  const sessionToken = await createSessionToken({
+    userId: currentUser.id,
+    email: currentUser.email,
+    isAdmin: currentUser.isAdmin,
+  });
   const response = NextResponse.json({
-    id: user.id,
-    email: user.email,
+    id: currentUser.id,
+    email: currentUser.email,
     emailVerificationSent: mailResult.sent,
     // Solo fuori produzione e solo se l'email non e' stata davvero
     // inviata: il link viene restituito per permettere di testare il
