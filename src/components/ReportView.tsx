@@ -1,5 +1,9 @@
+"use client";
+
+import { useState } from "react";
 import type { CategoryKey, DigitalCheckReport, IssueSeverity } from "@/types";
 import { ScoreCircle } from "./ScoreCircle";
+import { ConsultationModal } from "./ConsultationModal";
 
 const CATEGORY_LABELS: Record<CategoryKey, string> = {
   seo: "SEO",
@@ -18,6 +22,7 @@ const SEVERITY_LABELS: Record<IssueSeverity, { label: string; className: string 
 };
 
 export function ReportView({ report }: { report: DigitalCheckReport }) {
+  const [showConsultation, setShowConsultation] = useState(false);
   const bySeverity = { high: [] as typeof report.issues, medium: [] as typeof report.issues, low: [] as typeof report.issues };
   for (const issue of report.issues) bySeverity[issue.severity].push(issue);
 
@@ -128,13 +133,17 @@ export function ReportView({ report }: { report: DigitalCheckReport }) {
           DigitalCheck ha individuato {report.issues.length} punti di miglioramento per{" "}
           {report.requestedUrl}.
         </p>
-        <a
-          href="#consulenza"
+        <button
+          onClick={() => setShowConsultation(true)}
           className="mt-5 inline-block rounded-md bg-accent px-6 py-3 font-medium text-paper transition-colors hover:bg-accent-deep"
         >
           Richiedi una consulenza
-        </a>
+        </button>
       </section>
+
+      {showConsultation && (
+        <ConsultationModal onClose={() => setShowConsultation(false)} prefillUrl={report.requestedUrl} />
+      )}
     </div>
   );
 }

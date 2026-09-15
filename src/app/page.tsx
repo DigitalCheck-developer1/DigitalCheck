@@ -62,7 +62,10 @@ export default function HomePage() {
   return (
     <main>
       <nav className="flex items-center justify-between border-b border-line px-6 py-4">
-        <span className="font-display text-lg">DigitalCheck</span>
+        <div className="flex items-baseline gap-2">
+          <span className="font-display text-lg">DigitalCheck</span>
+          <span className="text-xs text-ink-soft">powered by Imperium Digital</span>
+        </div>
         <div className="flex items-center gap-4 text-sm">
           <Link href="/login" className="text-ink-soft hover:text-ink">
             Accedi
