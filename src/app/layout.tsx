@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Fraunces, IBM_Plex_Sans } from "next/font/google";
 import "./globals.css";
+import { ChatWidget } from "@/components/ChatWidget";
 
 const fraunces = Fraunces({
   subsets: ["latin"],
@@ -23,7 +24,10 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="it" className={`${fraunces.variable} ${plexSans.variable}`}>
-      <body className="bg-paper text-ink font-body antialiased">{children}</body>
+      <body className="bg-paper text-ink font-body antialiased">
+        {children}
+        <ChatWidget />
+      </body>
     </html>
   );
 }

@@ -261,7 +261,7 @@ export default function HomePage() {
                 <li>• Report PDF scaricabili e condivisibili</li>
                 <li>• Fino a 10 siti monitorati, 100 scansioni al mese</li>
               </ul>
-              <p className="mt-4 text-sm text-ink-soft">9,99 €/mese</p>
+              <p className="mt-4 text-sm text-ink-soft">7,99 €/mese</p>
             </div>
           </div>
         </div>
