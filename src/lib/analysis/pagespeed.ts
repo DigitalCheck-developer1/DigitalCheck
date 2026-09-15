@@ -16,7 +16,7 @@ export async function fetchPageSpeedScore(url: string): Promise<PageSpeedResult 
   if (!apiKey) return null;
 
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 20_000);
+  const timer = setTimeout(() => controller.abort(), 25_000);
 
   try {
     const endpoint =
