@@ -248,7 +248,7 @@ export default function SiteDetailPage({ params }: { params: { id: string } }) {
               onClick={handleUpgrade}
               className="mt-5 w-full rounded-md bg-accent px-4 py-2.5 text-sm font-medium text-paper hover:bg-accent-deep"
             >
-              Passa a Pro — 7,99 €/mese
+              Passa a Pro — 6,99 €/mese
             </button>
           </section>
         )}
