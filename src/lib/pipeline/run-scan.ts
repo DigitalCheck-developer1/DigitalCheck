@@ -42,7 +42,7 @@ export async function runScanPipeline(
   }
 
   const facts = analyzeSeoFacts(crawl);
-  const scoring = computeScoring({ facts, crawl, businessType });
+  const scoring = await computeScoring({ facts, crawl, businessType, url });
   const { analysis: aiAnalysis, unavailableReason } = await runContentAnalysis(
     facts,
     crawl,

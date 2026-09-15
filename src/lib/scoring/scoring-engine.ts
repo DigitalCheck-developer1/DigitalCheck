@@ -6,11 +6,13 @@ import type {
   SeoFacts,
 } from "@/types";
 import { getWeightsFor } from "./weights";
+import { fetchPageSpeedScore } from "@/lib/analysis/pagespeed";
 
 interface ScoringInput {
   facts: SeoFacts;
   crawl: CrawlResult;
   businessType: BusinessType;
+  url: string;
 }
 
 export interface ScoringOutput {
@@ -225,15 +227,39 @@ function scoreMobile(facts: SeoFacts, issues: ScanIssue[]): { score: number; ver
 
 // ---------- Performance (senza una vera misura Core Web Vitals, si
 // dichiara esplicitamente come stima non verificata) ----------
-function scorePerformance(
+async function scorePerformance(
+  url: string,
   crawl: CrawlResult,
   issues: ScanIssue[]
-): { score: number; verified: boolean } {
+): Promise<{ score: number; verified: boolean; notes?: string }> {
+  const pagespeed = await fetchPageSpeedScore(url);
+
+  if (pagespeed) {
+    if (pagespeed.score < 50) {
+      pushIssue(issues, {
+        title: "Performance reale sotto la soglia",
+        description: `Google PageSpeed Insights assegna un punteggio performance di ${pagespeed.score}/100 (mobile).`,
+        whyItMatters: "Un sito lento aumenta l'abbandono dei visitatori e puo' penalizzare il posizionamento su Google.",
+        recommendation: "Ottimizza le immagini, riduci il JavaScript non necessario e valuta il caching delle risorse statiche.",
+        severity: pagespeed.score < 30 ? "high" : "medium",
+        category: "technical",
+      });
+    }
+
+    const notesParts = ["Dati reali da Google PageSpeed Insights (mobile)."];
+    if (pagespeed.lcpMs != null) notesParts.push(`LCP: ${(pagespeed.lcpMs / 1000).toFixed(1)}s`);
+    if (pagespeed.clsScore != null) notesParts.push(`CLS: ${pagespeed.clsScore.toFixed(2)}`);
+    if (pagespeed.inpMs != null) notesParts.push(`INP: ${Math.round(pagespeed.inpMs)}ms`);
+
+    return { score: pagespeed.score, verified: true, notes: notesParts.join(" ") };
+  }
+
+  // Fallback: PAGESPEED_API_KEY assente o chiamata fallita. Euristica
+  // grezza basata solo sulla dimensione dell'HTML scaricato: NON e' un
+  // Core Web Vital reale. Va trattata come stima.
   const homeSize = crawl.pages[0]?.sizeBytes ?? 0;
   let score = 100;
 
-  // Euristica grezza basata solo sulla dimensione dell'HTML scaricato:
-  // NON e' un Core Web Vital reale. Va trattata come stima.
   if (homeSize > 500_000) {
     score -= 30;
     pushIssue(issues, {
@@ -333,8 +359,8 @@ function scoreConversion(
   return Math.max(0, Math.min(100, Math.round(score)));
 }
 
-export function computeScoring(input: ScoringInput): ScoringOutput {
-  const { facts, crawl, businessType } = input;
+export async function computeScoring(input: ScoringInput): Promise<ScoringOutput> {
+  const { facts, crawl, businessType, url } = input;
   const issues: ScanIssue[] = [];
   const unverifiable: string[] = [];
 
@@ -342,7 +368,7 @@ export function computeScoring(input: ScoringInput): ScoringOutput {
   const technicalScore = scoreTechnical(facts, issues);
   const accessibilityScore = scoreAccessibility(facts, issues);
   const mobile = scoreMobile(facts, issues);
-  const performance = scorePerformance(crawl, issues);
+  const performance = await scorePerformance(url, crawl, issues);
   const conversionScore = scoreConversion(crawl, businessType, issues);
 
   // Il content score reale viene assegnato altrove (content-analyzer,
@@ -357,7 +383,7 @@ export function computeScoring(input: ScoringInput): ScoringOutput {
   }
   if (!performance.verified) {
     unverifiable.push(
-      "Performance: nessuna misura Core Web Vitals reale disponibile (PAGESPEED_API_KEY non configurata). Punteggio basato su una stima approssimativa della dimensione della pagina."
+      "Performance: nessuna misura Core Web Vitals reale disponibile (PAGESPEED_API_KEY non configurata o richiesta non riuscita). Punteggio basato su una stima approssimativa della dimensione della pagina."
     );
   }
 
@@ -365,7 +391,7 @@ export function computeScoring(input: ScoringInput): ScoringOutput {
 
   const categoryScores: CategoryScore[] = [
     { category: "seo", score: seoScore, weight: weights.seo, verified: true },
-    { category: "performance", score: performance.score, weight: weights.performance, verified: performance.verified, notes: "Stima, non una misura Core Web Vitals reale." },
+    { category: "performance", score: performance.score, weight: weights.performance, verified: performance.verified, notes: performance.notes ?? "Stima, non una misura Core Web Vitals reale." },
     { category: "mobile", score: mobile.score, weight: weights.mobile, verified: mobile.verified, notes: "Basato solo sul tag viewport, non su un rendering reale." },
     { category: "content", score: contentFallback, weight: weights.content, verified: false, notes: "In attesa di analisi AI del contenuto." },
     { category: "conversion", score: conversionScore, weight: weights.conversion, verified: true },
